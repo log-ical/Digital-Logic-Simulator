@@ -56,10 +56,14 @@ Defining the component is case-insensitive. For example, `and`, `AND`, and `And`
 `<name>` is the string identifier for the wire. You use this name to reference the wire when creating a component. The optional `high` or `low` sets the initial state of the wire. If not specified, the wire defaults to undefined.
   - Wire Bus:
     - `WIRE <name>[<start>:<end>] <optional: high/low>`
+
 Wire Busses are used for groups of wires. `<start>` and `<end>` define the range of the bus. For example, `WIRE myBus[3:0]` creates a 4-wire bus named `myBus` with indices 0 to 3. The optional `high` or `low` sets the initial state of all wires in the bus. If not specified, the bus defaults to undefined.
+
 To access a specific wire in the bus you reference it by `busName[index]`. Example: `AND and0 myBus[0] myBus[1] myBus[2]`
+
   - Clock Wire:
     - `WIRE <name> clk`
+
 A clock wire is a type of wire that toggles between high low every cycle. 
 
 - Component Types:
@@ -71,11 +75,15 @@ A clock wire is a type of wire that toggles between high low every cycle.
     - NOR: `NOR <name> <inputA> <inputB> <output>`
     - XOR: `XOR <name> <inputA> <inputB> <output>`
     - XNOR: `XNOR <name> <inputA> <inputB> <output>`
+
 Each gate has a name, inputs, and an output. `<name>` is a string identifier for the component. `<inputA>`, `<inputB>`, and `<output>` are wire names.
+
   - Multiplexers/Demultiplexers:
     - MUX: `MUX <number>x<number> <name> <inputWireBus1>...<inputWireBusN> <selectBus> <outputBus>`
     - DEMUX: `DEMUX <number>x<number> <name> <inputA> <selectBus> <output1> <output2>`
+    - 
 Multiplexers and demultiplexers take wire busses for inputs, outputs, and select. The `<number>x<number>` indicates the type of mux/demux, e.g., `4x1` would represent a 4-to-1 multiplexer. Each input bus size should match the size of the output bus. You must declare an input bus for each of the inputs required; for example:
+
 ```md
 // Input, output, and select bus declarations
 WIRE inputBus1[3:0]
@@ -110,6 +118,7 @@ DFF dff0 clk d q falling
 ```
   - Read-Only Memory (ROM):
     - ROM: `ROM <name> <addressBus> <dataBus> <memoryFilePath>`
+
 Address and data must be wire busses. `<memoryFilePath>` is the path to your rom file. This file should be a `.txt` file with each line representing a byte of data. Example:
 
 ```md

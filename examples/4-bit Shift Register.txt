@@ -1,0 +1,13 @@
+// 4-bit Shift Register Example 
+
+// design.txt
+wire clk clk
+wire Q[3:0] low
+wire input
+
+dff dff3 clk Q[1] Q[0]
+dff dff2 clk Q[2] Q[1]
+dff dff1 clk Q[3] Q[2]
+dff dff0 clk input Q[3]
+
+

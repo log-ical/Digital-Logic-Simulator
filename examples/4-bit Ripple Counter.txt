@@ -1,0 +1,10 @@
+// 4-bit Ripple Counter Example
+
+wire clk clk
+wire A[3:0] low
+wire vdd high
+
+JKFF jkff0 clk vdd vdd A[0]
+JKFF jkff1 A[0] vdd vdd A[1] falling
+JKFF jkff2 A[1] vdd vdd A[2] falling
+JKFF jkff3 A[2] vdd vdd A[3] falling

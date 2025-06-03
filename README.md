@@ -62,7 +62,6 @@ To access a specific wire in the bus you reference it by `busName[index]`. Examp
     - `WIRE <name> clk`
 A clock wire is a type of wire that toggles between high low every cycle. 
 
-```md
 - Component Types:
   - Logic Gates:
     - AND: `AND <name> <inputA> <inputB> <output>`

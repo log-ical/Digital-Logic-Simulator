@@ -23,6 +23,7 @@
 #include <vector>
 #include <filesystem>
 #include <map>
+#include <cstdlib>
 
 std::unordered_map<std::string, std::vector<WIRE_STATE>> waveform;
 std::string designFilePath, testbenchFilePath;
@@ -30,6 +31,19 @@ static char designBuffer[1024 * 16] = "";
 static char testbenchBuffer[1024 * 16] = "";
 static int cycleCount = 10; 
 
+void open_url(const std::string& url) {
+#ifdef _WIN32
+    std::string command = "start " + url;
+#elif __APPLE__
+    std::string command = "open " + url;
+#elif __linux__
+    std::string command = "xdg-open " + url;
+#else
+    #error "Unsupported platform"
+#endif
+
+    system(command.c_str());
+}
 
 void init() {
 
@@ -177,14 +191,12 @@ void init() {
                 ImGui::EndMenu();
             }
 
-
             if (ImGui::BeginMenu("Help")) {
-                if (ImGui::MenuItem("About")) { /* TODO */}
-                ImGui::Separator();
-                if (ImGui::MenuItem("Design Documentation")) { /* TODO */ }
-                if (ImGui::MenuItem("Testbench Documentation")) { /* TODO */ }
+                if (ImGui::MenuItem("About")) { 
+                    open_url("https://github.com/log-ical/FPGA-Inspired-Logic-Simulator");
+                }
                 ImGui::EndMenu();
-            }  
+            } 
 
             ImGui::EndMainMenuBar();
         }
@@ -202,14 +214,17 @@ void init() {
             ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
 
             ImGuiID dock_main_id = dockspace_id;
+            //ImGuiID dock_design  = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_None, 0.7f, nullptr, &dock_main_id);
             ImGuiID dock_left    = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.35f, nullptr, &dock_main_id);
             ImGuiID dock_right   = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.35f, nullptr, &dock_main_id);
-            ImGuiID dock_bottom  = ImGui::DockBuilderSplitNode(dock_right, ImGuiDir_Down, 0.5f, nullptr, &dock_right);
+            ImGuiID dock_bottom  = ImGui::DockBuilderSplitNode(dock_right, ImGuiDir_Down, 0.65f, nullptr, &dock_right);
 
             ImGui::DockBuilderDockWindow("Testbench", dock_left);
-            ImGui::DockBuilderDockWindow("Command Toolbar", dock_right);
             ImGui::DockBuilderDockWindow("Component Tree", dock_right);
+            ImGui::DockBuilderDockWindow("Command Toolbar", dock_right);
             ImGui::DockBuilderDockWindow("Design", dock_main_id);
+            ImGui::DockBuilderDockWindow("Waveform Viewer", dock_bottom);
+            ImGui::DockBuilderDockWindow("RTL Viewer", dock_left);
 
             ImGui::DockBuilderFinish(dockspace_id);
         }
@@ -272,6 +287,162 @@ void init() {
             ImGui::End();
         }
         
+        
+
+        ImGui::Begin("Command Toolbar", nullptr, ImGuiWindowFlags_NoCollapse);
+
+        
+        
+        ImVec2 buttonSizeFile = ImVec2((ImGui::GetContentRegionAvail().x/3)-5, 0);
+        ImVec2 buttonSizeOther = ImVec2(ImGui::GetContentRegionAvail().x, 0);
+
+        if(ImGui::Button("New", buttonSizeFile)){
+            std::ofstream file("design.txt");
+            std::ofstream file1("testbench.txt");
+            file.close();
+            file1.close();
+            designFilePath = "design.txt";
+            testbenchFilePath = "testbench.txt";
+            strcpy(designBuffer, "");
+            strcpy(testbenchBuffer, "");
+            isDesignModified = false;
+            isTestbenchModified = false;
+            lastSavedDesign = std::string(designBuffer);
+            lastSavedTestbench = std::string(testbenchBuffer);
+        }
+        ImGui::SameLine();
+        if(ImGui::Button("Open", buttonSizeFile)){
+            gui_openFile();
+        }
+        ImGui::SameLine();
+        if(ImGui::Button("Save", buttonSizeFile)){
+            gui_saveFile();
+        }
+
+        ImGui::Separator();
+        
+        if (ImGui::Button("Choose Design File", buttonSizeOther)) {
+            nfdchar_t *outPath = NULL;
+            nfdresult_t result = NFD_OpenDialog(
+                NULL,
+                NULL,
+                &outPath
+            );
+
+            if (result == NFD_OKAY) {
+                designFilePath = outPath;
+                std::ifstream file(outPath); 
+                if (!file) {
+                    std::cerr << "Failed to open file: " << outPath << std::endl;
+                } else {
+                    std::stringstream buffer;
+                    buffer << file.rdbuf();
+                    std::string fileContent = buffer.str();
+                    strcpy(designBuffer, fileContent.c_str());
+                    lastSavedDesign = fileContent;
+                    file.close();
+                }
+                free(outPath); 
+            }
+            else if (result == NFD_CANCEL) {
+                std::cout << "User canceled file dialog." << std::endl;
+            }
+            else {
+                std::cerr << "Error: " << NFD_GetError() << std::endl;
+            }
+        }
+        if (ImGui::Button("Choose Testbench File", buttonSizeOther)) {
+            nfdchar_t *outPath = NULL;
+            nfdresult_t result = NFD_OpenDialog(
+                NULL,
+                NULL,
+                &outPath
+            );
+
+            if (result == NFD_OKAY) {
+                testbenchFilePath = outPath;
+                std::ifstream file(outPath); 
+                if (!file) {
+                    std::cerr << "Failed to open file: " << outPath << std::endl;
+                } else {
+                    std::stringstream buffer;
+                    buffer << file.rdbuf();
+                    std::string fileContent = buffer.str();
+                    strcpy(testbenchBuffer, fileContent.c_str()); 
+                    lastSavedTestbench = fileContent;
+                    file.close();
+                }
+                free(outPath); 
+            }
+            else if (result == NFD_CANCEL) {
+                std::cout << "User canceled file dialog." << std::endl;
+            }
+            else {
+                std::cerr << "Error: " << NFD_GetError() << std::endl;
+            }
+        }
+        ImGui::Separator();
+
+        static bool drawRTL = false;
+        if (ImGui::Button("RTL View (WIP)", buttonSizeOther)) {
+            if (designFilePath.empty() || testbenchFilePath.empty()) {
+                ImGui::OpenPopup("Error");
+            } else {
+                waveform.clear();
+                Interpreter::runSimulation(designFilePath, testbenchFilePath, cycleCount);
+            }
+            drawRTL = true;
+            build_RTL();
+        }
+        if(drawRTL){
+            draw_RTL();
+        }
+
+        // if (ImGui::Button("Waveform View")) {
+        //     if (designFilePath.empty() || testbenchFilePath.empty()) {
+        //         ImGui::OpenPopup("Error");
+        //     } else {
+        //         waveform.clear();
+        //         Interpreter::runSimulation(designFilePath, testbenchFilePath, cycleCount);
+        //     }
+        //     ImGui::OpenPopup("Waveform");
+        // }
+        ImGui::Text("Clock Cycles:");
+        ImGui::SameLine();
+        ImGui::PushItemWidth(200.0f);
+        ImGui::InputInt("##Cycles", &cycleCount, 1, 5);
+        ImGui::PopItemWidth();
+        if (cycleCount < 2) {
+            cycleCount = 2;
+        } else if (cycleCount > 99) {
+            cycleCount = 99;
+        }
+
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+        // waveform popup
+        
+        if (ImGui::BeginPopupModal("Waveform", NULL)) {
+            float close_button_height = ImGui::GetFrameHeightWithSpacing() + 10.0f;
+            float child_height = ImGui::GetContentRegionAvail().y - close_button_height;
+
+            // Horizontal scrolling region
+            ImGui::BeginChild("WaveformRegion", ImVec2(0, child_height), true, ImGuiWindowFlags_HorizontalScrollbar);
+                DrawWaveformVisual(waveform, cycleCount);
+            ImGui::EndChild();
+            ImGui::Spacing();
+            if (ImGui::Button("Close", ImVec2(120, 0))) {
+                ImGui::CloseCurrentPopup();
+            }
+        
+            ImGui::EndPopup();
+        }
+
+        ImGui::End();
+
+
+
         ImGui::Begin("Component Tree", nullptr, ImGuiWindowFlags_NoCollapse);
         if(designFilePath.empty() || testbenchFilePath.empty()) {
                 ImGui::Text("Please select design\nand testbench files first.");
@@ -409,124 +580,18 @@ void init() {
             }
         }
         ImGui::End();
-        
 
-        ImGui::Begin("Command Toolbar", nullptr, ImGuiWindowFlags_NoCollapse);
-        if (ImGui::Button("Choose Design File")) {
-            nfdchar_t *outPath = NULL;
-            nfdresult_t result = NFD_OpenDialog(
-                NULL,
-                NULL,
-                &outPath
-            );
-
-            if (result == NFD_OKAY) {
-                designFilePath = outPath;
-                std::ifstream file(outPath); 
-                if (!file) {
-                    std::cerr << "Failed to open file: " << outPath << std::endl;
-                } else {
-                    std::stringstream buffer;
-                    buffer << file.rdbuf();
-                    std::string fileContent = buffer.str();
-                    strcpy(designBuffer, fileContent.c_str());
-                    lastSavedDesign = fileContent;
-                    file.close();
-                }
-                free(outPath); 
-            }
-            else if (result == NFD_CANCEL) {
-                std::cout << "User canceled file dialog." << std::endl;
-            }
-            else {
-                std::cerr << "Error: " << NFD_GetError() << std::endl;
-            }
-        }
-        if (ImGui::Button("Choose Testbench File")) {
-            nfdchar_t *outPath = NULL;
-            nfdresult_t result = NFD_OpenDialog(
-                NULL,
-                NULL,
-                &outPath
-            );
-
-            if (result == NFD_OKAY) {
-                testbenchFilePath = outPath;
-                std::ifstream file(outPath); 
-                if (!file) {
-                    std::cerr << "Failed to open file: " << outPath << std::endl;
-                } else {
-                    std::stringstream buffer;
-                    buffer << file.rdbuf();
-                    std::string fileContent = buffer.str();
-                    strcpy(testbenchBuffer, fileContent.c_str()); 
-                    lastSavedTestbench = fileContent;
-                    file.close();
-                }
-                free(outPath); 
-            }
-            else if (result == NFD_CANCEL) {
-                std::cout << "User canceled file dialog." << std::endl;
-            }
-            else {
-                std::cerr << "Error: " << NFD_GetError() << std::endl;
-            }
-        }
-        ImGui::Separator();
-        if(ImGui::Button("Run Simulation")){
-            if (designFilePath.empty() || testbenchFilePath.empty()) {
-                ImGui::OpenPopup("Error");
-            } else {
+        // Waveform Panel
+        bool showWaveForm = false;
+        ImGui::Begin("Waveform Viewer", nullptr, ImGuiWindowFlags_NoCollapse);
+            if(ImGui::Button("Run Simulation", ImVec2(ImGui::GetContentRegionAvail().x, 0))){
                 waveform.clear();
                 Interpreter::runSimulation(designFilePath, testbenchFilePath, cycleCount);
-                //std::cout << "waveform size: " << waveform.size() << std::endl;
+                showWaveForm = true;
             }
-        }
-        ImGui::Separator();
-
-        static bool drawRTL = false;
-        if (ImGui::Button("RTL View (WIP)")) {
-            drawRTL = true;
-            build_RTL();
-        }
-        if(drawRTL){
-            draw_RTL();
-        }
-
-        if (ImGui::Button("Waveform View")) {
-            ImGui::OpenPopup("Waveform");
-        }
-        ImGui::Text("Clock Cycles:");
-        ImGui::SameLine();
-        ImGui::PushItemWidth(200.0f);
-        ImGui::InputInt("##Cycles", &cycleCount, 1, 5);
-        ImGui::PopItemWidth();
-        if (cycleCount < 2) {
-            cycleCount = 2;
-        } else if (cycleCount > 99) {
-            cycleCount = 99;
-        }
-
-        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-        if (ImGui::BeginPopupModal("Waveform", NULL)) {
-            float close_button_height = ImGui::GetFrameHeightWithSpacing() + 10.0f;
-            float child_height = ImGui::GetContentRegionAvail().y - close_button_height;
-
-            // Horizontal scrolling region
-            ImGui::BeginChild("WaveformRegion", ImVec2(0, child_height), true, ImGuiWindowFlags_HorizontalScrollbar);
-                DrawWaveformVisual(waveform, cycleCount);
-            ImGui::EndChild();
-            ImGui::Spacing();
-            if (ImGui::Button("Close", ImVec2(120, 0))) {
-                ImGui::CloseCurrentPopup();
-            }
-        
-            ImGui::EndPopup();
-        }
-
+            DrawWaveformVisual(waveform, cycleCount);
         ImGui::End();
+
 
         // ---- Render ----
         ImGui::Render();

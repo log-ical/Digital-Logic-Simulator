@@ -20,12 +20,18 @@ SRCS = src/main.cpp src/logic/Component.cpp src/logic/Wire.cpp src/Interpreter.c
        third_party/imgui/backends/imgui_impl_sdl3.cpp \
        third_party/imgui/backends/imgui_impl_opengl3.cpp \
        third_party/NFD/nfd_win.cpp \
-       third_party/NFD/nfd_common.c \
        third_party/ImNodes/imnodes.cpp \
        src/gui/gui.cpp \
-       src/gui/RTL.cpp
+       src/gui/RTL.cpp \
+      third_party/NFD/nfd_common.c \
 
-OBJS = $(SRCS:.cpp=.o)
+CPP_SRCS = $(filter %.cpp, $(SRCS))
+C_SRCS   = $(filter %.c, $(SRCS))
+
+CPP_OBJS = $(CPP_SRCS:.cpp=.o)
+C_OBJS   = $(C_SRCS:.c=.o)
+
+OBJS = $(CPP_OBJS) $(C_OBJS)
 
 # Resource file
 RES = res/resource.res

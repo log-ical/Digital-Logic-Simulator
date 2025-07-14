@@ -40,3 +40,4 @@ third_party/*
 *.txt
 /build
 !/examples/**   
+/bin

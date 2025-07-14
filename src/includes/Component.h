@@ -56,6 +56,11 @@ public:
     Wire* getOutput() const {
         return output;
     }
+
+    // std::vector<Wire*> getInputs() const {
+    //     return componentType == COMPONENT::OR : {input_A} ? {input_A, input_B};
+    // }
+
     void setOutput(Wire* output){
         this->output = output;
     }

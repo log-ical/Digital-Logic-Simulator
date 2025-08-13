@@ -1,8 +1,8 @@
 This project is still underdevelopment. Some features may not work or behave as intended. 
 
-# FPGA-Inspired Logic Simulator
+# Digital Logic Simulator
 
-An FPGA-inspired logic simulator tool with waveform viewing, netlist parsing, and RTL visualization. Built in C++ using SDL3, OpenGL, Dear ImGui, and ImNodes.
+A digital logic simulator tool with waveform viewing, netlist parsing, and RTL visualization. Built in C++ using SDL3, OpenGL, Dear ImGui, and ImNodes.
 
 ## Features
 
